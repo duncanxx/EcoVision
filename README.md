@@ -1,4 +1,4 @@
-# ♻️ Recycle Detection App
+# ♻️ EcoVision Recycle Detection App
 
 A Flutter-based mobile application that uses AI-powered object detection to classify **recyclable item** in real-time.  
 The app also features a **Recycle Bin Navigator** that helps users locate the nearest recycling bin, promoting smarter and greener waste disposal.  
