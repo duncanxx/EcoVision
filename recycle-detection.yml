@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Recycle Detection - API Gateway + Lambda + SageMaker"
+
+Resources:
+  RecycleLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: recycle-detection-lambda-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+
+  RecycleDetectionLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: recycle-detection-lambda
+      Handler: index.lambda_handler
+      Role: !GetAtt RecycleLambdaRole.Arn
+      Runtime: python3.9
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import base64
+
+          def lambda_handler(event, context):
+              runtime = boto3.client("sagemaker-runtime")
+
+              body = json.loads(event["body"])
+              image_b64 = body.get("image")
+              if not image_b64:
+                  return {
+                      "statusCode": 400,
+                      "body": json.dumps({"error": "No image found"})
+                  }
+
+              image_bytes = base64.b64decode(image_b64)
+
+              response = runtime.invoke_endpoint(
+                  EndpointName="your-sagemaker-endpoint",
+                  ContentType="application/x-image",
+                  Body=image_bytes
+              )
+
+              result = response["Body"].read().decode("utf-8")
+
+              return {
+                  "statusCode": 200,
+                  "headers": {"Content-Type": "application/json"},
+                  "body": json.dumps({"prediction": result})
+              }
+
+  RecycleApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: recycle-detection-api
+      ProtocolType: HTTP
+
+  RecycleApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref RecycleApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RecycleDetectionLambda.Arn}/invocations
+      PayloadFormatVersion: "2.0"
+
+  RecycleApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref RecycleApi
+      RouteKey: "POST /detect"
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref RecycleApiIntegration
+
+  RecycleApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref RecycleApi
+      StageName: prod
+      AutoDeploy: true
+
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RecycleDetectionLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RecycleApi}/*/*/detect
+
+Outputs:
+  ApiUrl:
+    Description: "Invoke URL for API Gateway"
+    Value: !Sub "https://${RecycleApi}.execute-api.${AWS::Region}.amazonaws.com/prod/detect"
