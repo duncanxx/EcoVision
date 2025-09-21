@@ -20,7 +20,7 @@ The app also features a **Recycle Bin Navigator** that helps users locate the ne
 - [Dart](https://dart.dev/) – Programming language  
 - [YOLO] – AI model for waste detection  
 - [AWS DynamoDB](https://aws.amazon.com/dynamodb/) – Stores recycling bin locations  
-- [Google Maps API / Flutter Maps] – Displays bin locations on a map  
+- [Google Maps API] – Displays bin locations on a map  
 - [Android] – Target platforms  
 
 ---
