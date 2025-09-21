@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # recycledetectionapp
 
 A new Flutter project.
