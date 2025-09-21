@@ -87,4 +87,3 @@ flutter build appbundle --release
 
 ## 📝 License
 This project is licensed under the MIT License
->>>>>>> b260a62883f7de36ba1637daced14151357c49d7
